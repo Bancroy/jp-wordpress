@@ -42,7 +42,7 @@
 
 					<!-- nav -->
 					<nav class="nav" role="navigation">
-						<?php html5blank_nav(); ?>
+						<?php jp_nav(); ?>
 					</nav>
 					<!-- /nav -->
 
