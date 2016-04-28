@@ -43,6 +43,7 @@
 					<!-- nav -->
 					<nav class="nav" role="navigation">
 						<?php jp_nav(); ?>
+						<?php do_action('sublanguage_print_language_switch'); ?>
 					</nav>
 					<!-- /nav -->
 
