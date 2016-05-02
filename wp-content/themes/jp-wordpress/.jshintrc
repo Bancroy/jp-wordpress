@@ -1,0 +1,12 @@
+{
+    "browser": true,
+    "eqeqeq": true,
+    "globals": {"$": true, "console": true},
+    "globalstrict": true,
+    "indent": 4,
+    "latedef": true,
+    "quotmark": "double",
+    "shadow": true,
+    "undef": true,
+    "unused": true
+}

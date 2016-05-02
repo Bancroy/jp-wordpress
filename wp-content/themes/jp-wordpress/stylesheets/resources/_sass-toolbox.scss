@@ -1,0 +1,158 @@
+/*
+    Author:         James Pietras (Bancroy)
+    Name:           SASS Toolbox
+    Description:    A set of SASS mixins and functions to make your life easier.
+    License:        MIT
+    Repository:     https://github.com/Bancroy/sass-toolbox
+*/
+
+// Breakpoints manager
+// Global data -> [map(string, integer)] breakpoint-name:break-screen-width
+/*
+    <variable>               <type>         <default>      <usage>
+    $breakpoint-name         [required]     ()             |Breakpoint name from map $breakpoints {string}
+    $breakpoint-type         [required]     ()             |Breakpoint type {string(and-down, only, and-up)}
+    $breakpoint-between      [optional]     (null)         |Breakpoint name for upper limit {string}
+    $verbose                 [optional]     (true)         |Enables possible optimization warning {boolean}
+*/
+@function breakpoint-next($breakpoint-names, $breakpoint-name, $breakpoint-index) {
+    @return if($breakpoint-index < length($breakpoint-names), nth(nth($breakpoints, $breakpoint-index + 1), 1), null);
+}
+
+@function breakpoint-min($breakpoint-name) {
+    $min: map-get($breakpoints, $breakpoint-name);
+    @return if($min > 0, $min, null);
+}
+
+@function breakpoint-max($breakpoint-names, $breakpoint-name, $breakpoint-index) {
+    $next: breakpoint-next($breakpoint-names, $breakpoint-name, $breakpoint-index);
+    @return if($next, breakpoint-min($next) - 1, null);
+}
+
+@mixin breakpoint-down($breakpoint-names, $breakpoint-name, $breakpoint-index) {
+    $max: breakpoint-max($breakpoint-names, $breakpoint-name, $breakpoint-index);
+    @if $max { @media (max-width: $max + "px") { @content; } } @else { @content; }
+}
+
+@mixin breakpoint-up($breakpoint-name) {
+    $min: breakpoint-min($breakpoint-name);
+    @if $min { @media (min-width: $min + "px") { @content; } } @else { @content; }
+}
+
+@mixin breakpoint($breakpoint-name, $breakpoint-type, $breakpoint-between: null, $verbose: true) {
+    $breakpoint-names: map-keys($breakpoints);
+    $breakpoint-index: index($breakpoint-names, $breakpoint-name);
+
+    @if $verbose {
+        $is-first-and-zero: if($breakpoint-index == 1 and map-get($breakpoints, $breakpoint-name) == 0, true, false);
+        $is-last: if($breakpoint-index == length($breakpoint-names), true, false);
+        @if $breakpoint-type == "and-down" and $is-last { @warn "This breakpoint makes no sense."; }
+        @if $breakpoint-type == "and-up" and $is-first-and-zero { @warn "This breakpoint makes no sense."; }
+        @if $breakpoint-type == "and-down" and $is-first-and-zero { @warn "This breakpoint could be [only]."; }
+        @if $breakpoint-type == "and-up" and $is-last { @warn "This breakpoint could be [only]."; }
+    }
+
+    @if $breakpoint-type == "and-down" {
+        @include breakpoint-down($breakpoint-names, $breakpoint-name, $breakpoint-index) { @content; };
+    } @else if $breakpoint-type == "only" {
+        @include breakpoint-up($breakpoint-name) { @include breakpoint-down($breakpoint-names, $breakpoint-name, $breakpoint-index) { @content; }; };
+    } @else if $breakpoint-type == "between" {
+        @if $breakpoint-name == $breakpoint-between { @error "You must use two different breakpoints with [between]."; }
+        @if map-get($breakpoints, $breakpoint-name) > map-get($breakpoints, $breakpoint-between) {
+            @if $verbose { @warn "You should pass smaller breakpoint as first argument when using [between]."; }
+            $tmp: $breakpoint-between;
+            $breakpoint-between: $breakpoint-name;
+            $breakpoint-name: $tmp;
+        }
+        @include breakpoint-up($breakpoint-name) { @include breakpoint-down($breakpoint-names, $breakpoint-between, index($breakpoint-names, $breakpoint-between)) { @content; }; };
+    } @else if $breakpoint-type == "and-up" {
+        @include breakpoint-up($breakpoint-name) { @content; };
+    }
+}
+
+// Standard clearfix for float layouts
+@mixin clearfix() {
+    &::after {
+        clear: both;
+        content: "";
+        display: table;
+    }
+}
+
+// Flexbox based fluid grid
+// Dependencies -> breakpoint()
+// Global data -> [map(string, integer)] breakpoint-name:break-screen-width
+/*
+    <variable>               <type>         <default>      <usage>
+    $container-width         [optional]     ("1200px")     |Container max-width {string}
+    $columns                 [optional]     (16)           |Grid columns count {integer}
+    $gutter-width            [optional]     ("20px")       |Grid single gutter width {string}
+    $unit                    [optional]     ("px")         |Unit of container max-width and gutter width {string(px, em, rem)}
+*/
+@mixin flexbox-grid($container-width: 1200, $columns: 16, $gutter-width: 20, $unit: "px") {
+    $unit: unquote($unit);
+
+    .container {
+        margin: 0 auto;
+        max-width: $container-width + $unit;
+        position: relative;
+        width: 95%;
+    }
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .column {
+        box-sizing: border-box;
+        padding: 0 ($gutter-width / 2) + $unit;
+
+        @each $breakpoint-name, $breakpoint-value in $breakpoints {
+            @for $column from 1 through $columns {
+                $perc: percentage($column / $columns);
+
+                @include breakpoint($breakpoint-name, "and-up", null, false) {
+                    &.#{$breakpoint-name}-#{$column} {
+                        flex-basis: $perc;
+                    }
+                }
+
+                @include breakpoint($breakpoint-name, "only") {
+                    &.offset-#{$breakpoint-name}-#{$column} {
+                        margin-left: $perc;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Smoothly scaled font-size
+/*
+    <variable>               <type>         <default>      <usage>
+    $size-start              [required]     ()             |Inital font-size of element {integer, float}
+    $size-end                [required]     ()             |Font-size to be reached on last step {integer, float}
+    $unit                    [required]     ()             |Unit of font-size {string(px, em, rem)}
+    $breakpoint-final        [optional]     (1000)         |Value of breakpoint at last step {integer, float}
+    $steps                   [optional]     (10)           |Amount of steps between base and final breakpoint values {integer}
+    $breakpoint-base         [optional]     (361)          |Value of breakpoint at first step {integer}
+*/
+@mixin flow-text($size-start, $size-end, $unit, $breakpoint-final: 1000, $steps: 10, $breakpoint-base: 361) {
+    $steps: $steps - 1;
+    $unit: unquote($unit);
+
+    font-size: $size-start + $unit;
+
+    @for $step from 0 through $steps {
+        $step-difference: ($breakpoint-final - $breakpoint-base) / $steps;
+        $breakpoint-step: round($breakpoint-base + $step-difference * $step);
+
+        @media only screen and (min-width: $breakpoint-step + "px") {
+            $size-step: $size-start + (($size-end - $size-start) / ($steps + 1) * ($step + 1));
+            @if $unit == px { $size-step: round($size-step); }
+
+            font-size: $size-step + $unit;
+        }
+    }
+}
