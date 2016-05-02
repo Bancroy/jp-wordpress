@@ -64,7 +64,7 @@
         return array();
     }
 
-    add_action('init', 'jp_pagination');
+    //add_action('init', 'jp_pagination');
     function jp_pagination() {
         global $wp_query;
         $big = 999999999;
