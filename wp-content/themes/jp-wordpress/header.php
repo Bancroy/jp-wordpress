@@ -14,8 +14,8 @@
 		<?php wp_head(); ?>
 	</head>
 	<body>
-        <header class="header clear" role="banner">
-            <nav class="nav" role="navigation">
+        <header id="header">
+            <nav>
                 <h3 class="outline-only">Navigation</h3>
                 <?php jp_nav(); ?>
                 <?php do_action('sublanguage_print_language_switch'); ?>

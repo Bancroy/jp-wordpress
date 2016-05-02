@@ -1,0 +1,17 @@
+// Colors
+$black: #000;
+$white: #fff;
+
+// Responsiveness
+$breakpoints: (
+    "xs": 0,
+    "sm": 544,
+    "md": 768,
+    "lg": 992,
+    "xl": 1200
+);
+@include flexbox-grid();
+
+//General settings
+$font-fallback: "Arial, sans-serif";
+$transition-time: .5s;
