@@ -207,6 +207,13 @@ Please upgrade your version of WP Google Maps to version 6.0.27 as it includes m
 
 == Changelog ==
 
+= 6.3.10 - 2016-05-03 - Low priority =
+* Added event listeners for both jQuery and accordions so that the map can init correctly when placed in a tab or accordion
+* Added checks to stop themes and plugins from loading the Google Maps API over and above our call to the API on pages that contain the map shortcode
+* Fixed an SSL issue with the marker URL (Thank you David Clough)
+* Fixed a bug that caused the CSS file to be loaded on all front end pages
+* Added SSL support to the jQuery CDN file
+
 = 6.3.09 - 2016-04-15 - High priority =
 * Deprecated google maps api 3.14 and 3.15, added 3.23 and 3.24
 

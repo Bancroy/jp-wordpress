@@ -3,7 +3,7 @@
 Plugin Name: WP Google Maps
 Plugin URI: http://www.wpgmaps.com
 Description: The easiest to use Google Maps plugin! Create custom Google Maps with high quality markers containing locations, descriptions, images and links. Add your customized map to your WordPress posts and/or pages quickly and easily with the supplied shortcode. No fuss.
-Version: 6.3.09
+Version: 6.3.10
 Author: WP Google Maps
 Author URI: http://www.wpgmaps.com
 Text Domain: wp-google-maps
@@ -11,9 +11,16 @@ Domain Path: /languages
 */
 
 /* 
+ * 6.3.10 - 2016-05-03 - Low priority
+ * Added event listeners for both jQuery and accordions so that the map can init correctly when placed in a tab or accordion
+ * Added checks to stop themes and plugins from loading the Google Maps API over and above our call to the API on pages that contain the map shortcode
+ * Fixed an SSL issue with the marker URL (Thank you David Clough)
+ * Fixed a bug that caused the CSS file to be loaded on all front end pages
+ * Added SSL support to the jQuery CDN file
+ * 
+ * 
  * 6.3.09 - 2016-04-15 - High priority
  * Deprecated google maps api 3.14 and 3.15, added 3.23 and 3.24
- * 
  * 
  * 6.3.08 - 2016-04-14 - Medium Priority
  * Provides a workaround for users experiencing issues with their maps loading after updating to WordPress 4.5
@@ -227,8 +234,8 @@ $wpgmza_tblname_poly = $wpdb->prefix . "wpgmza_polygon";
 $wpgmza_tblname_polylines = $wpdb->prefix . "wpgmza_polylines";
 $wpgmza_tblname_categories = $wpdb->prefix. "wpgmza_categories";
 $wpgmza_tblname_category_maps = $wpdb->prefix. "wpgmza_category_maps";
-$wpgmza_version = "6.3.09";
-$wpgmza_p_version = "6.3.09";
+$wpgmza_version = "6.3.10";
+$wpgmza_p_version = "6.3.10";
 $wpgmza_t = "basic";
 define("WPGMAPS", $wpgmza_version);
 define("WPGMAPS_DIR",plugin_dir_url(__FILE__));
@@ -619,10 +626,16 @@ function wpgmaps_get_marker_url($mapid = false) {
         
         if (is_multisite()) { 
             global $blog_id;
+
             $wurl = $xml_marker_url.$blog_id."-".$mapid."markers.xml";;
+            $wurl = preg_replace('#^https?:#', '', $wurl);
         }
         else {
             $wurl = $xml_marker_url.$mapid."markers.xml";
+            $wurl = preg_replace('#^https?:#', '', $wurl);
+            
+
+
         }
     }
     
@@ -1654,7 +1667,7 @@ function wpgmaps_user_javascript_basic() {
             if ('undefined' === typeof window.jQuery) {
                 setTimeout(function(){ 
                     document.getElementById('wpgmza_map').innerHTML = 'Error: In order for WP Google Maps to work, jQuery must be installed. A check was done and jQuery was not present. Please see the <a href="http://www.wpgmaps.com/documentation/troubleshooting/jquery-troubleshooting/" title="WP Google Maps - jQuery Troubleshooting">jQuery troubleshooting section of our site</a> for more information.';
-                }, 3000);
+                }, 6000);
             } else {
                 /* all good.. continue... */
             }
@@ -1666,7 +1679,7 @@ function wpgmaps_user_javascript_basic() {
                     if (/1\.(0|1|2|3|4|5|6|7)\.(0|1|2|3|4|5|6|7|8|9)/.test(jQuery.fn.jquery)) {
                         setTimeout(function(){ 
                             document.getElementById('wpgmza_map').innerHTML = 'Error: Your version of jQuery is outdated. WP Google Maps requires jQuery version 1.7+ to function correctly. Go to Maps->Settings and check the box that allows you to over-ride your current jQuery to try eliminate this problem.';
-                        }, 3000);
+                        }, 6000);
                     } else {
 
                         jQuery("#wpgmza_map").css({
@@ -1679,6 +1692,16 @@ function wpgmaps_user_javascript_basic() {
                         MYMAP.placeMarkers('<?php echo wpgmaps_get_marker_url($wpgmza_current_map_id); ?>?u='+UniqueCode,<?php echo $wpgmza_current_map_id; ?>,null,null,null);
 
                         jQuery('body').on('tabsactivate', function(event, ui) {
+                            MYMAP.init('#wpgmza_map', myLatLng, <?php echo $start_zoom; ?>);
+                            UniqueCode=Math.round(Math.random()*10000);
+                            MYMAP.placeMarkers('<?php echo wpgmaps_get_marker_url($wpgmza_current_map_id); ?>?u='+UniqueCode,<?php echo $wpgmza_current_map_id; ?>,null,null,null);
+                        });
+                        jQuery('body').on('tabsshow', function(event, ui) {
+                            MYMAP.init('#wpgmza_map', myLatLng, <?php echo $start_zoom; ?>);
+                            UniqueCode=Math.round(Math.random()*10000);
+                            MYMAP.placeMarkers('<?php echo wpgmaps_get_marker_url($wpgmza_current_map_id); ?>?u='+UniqueCode,<?php echo $wpgmza_current_map_id; ?>,null,null,null);
+                        });
+                        jQuery('body').on('accordionactivate', function(event, ui) {
                             MYMAP.init('#wpgmza_map', myLatLng, <?php echo $start_zoom; ?>);
                             UniqueCode=Math.round(Math.random()*10000);
                             MYMAP.placeMarkers('<?php echo wpgmaps_get_marker_url($wpgmza_current_map_id); ?>?u='+UniqueCode,<?php echo $wpgmza_current_map_id; ?>,null,null,null);
@@ -5564,8 +5587,11 @@ function wpgmaps_user_styles() {
 
     if (!function_exists('wpgmaps_admin_styles_pro')) {
         global $wpgmza_version;
-        wp_register_style( 'wpgmaps-style', plugins_url('css/wpgmza_style.css', __FILE__),array(),$wpgmza_version);
-        wp_enqueue_style( 'wpgmaps-style' );
+        global $short_code_active;
+        if ($short_code_active) {
+            wp_register_style( 'wpgmaps-style', plugins_url('css/wpgmza_style.css', __FILE__),array(),$wpgmza_version);
+            wp_enqueue_style( 'wpgmaps-style' );
+        }
     }
 
 
@@ -6203,7 +6229,7 @@ function wpgmaps_load_jquery() {
         if (isset($wpgmza_settings['wpgmza_settings_force_jquery'])) { 
             if ($wpgmza_settings['wpgmza_settings_force_jquery'] == "yes") {
                 wp_deregister_script('jquery');
-                wp_register_script('jquery', 'http://code.jquery.com/jquery-1.11.3.min.js', false, "1.11.3");
+                wp_register_script('jquery', '//code.jquery.com/jquery-1.11.3.min.js', false, "1.11.3");
         }
         }
         wp_enqueue_script('jquery');
@@ -6381,4 +6407,28 @@ function wpgmza_basic_support_menu() {
         </div>
         
 <?php
+}
+
+
+add_action('wp_enqueue_scripts', 'wpgmza_deregister_scripts',999);
+add_action('wp_head', 'wpgmza_deregister_scripts',999);
+add_action('wp_footer', 'wpgmza_deregister_scripts',999);
+add_action('wp_print_scripts', 'wpgmza_deregister_scripts',999);
+function wpgmza_deregister_scripts() {
+    global $short_code_active;
+    if ($short_code_active) {
+        /* only deregister on pages that contain the shortcode */
+        wp_dequeue_script("google_map");
+        wp_dequeue_script("google_map2");
+        wp_dequeue_script("gmap-key");
+        wp_dequeue_script("imic_google_map");
+        wp_dequeue_script("googlemap");
+        wp_dequeue_script("googlemaps");
+        wp_dequeue_script("gmap_form_api");
+        wp_dequeue_script("map-api");
+        wp_dequeue_script("google-maps-v3");
+        wp_dequeue_script("googlemaps-v3");
+        wp_dequeue_script("googlemapsv3");
+    }
+
 }
