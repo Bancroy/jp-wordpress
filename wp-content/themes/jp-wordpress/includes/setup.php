@@ -25,6 +25,11 @@
                 wp_enqueue_script('comment-reply');
     }
 
+    add_filter('admin_init', 'jp_editor');
+    function jp_editor() {
+        add_editor_style('style.css');
+    }
+
     add_filter('nav_menu_css_class', 'jp_filter', 100, 1);
     add_filter('nav_menu_item_id',   'jp_filter', 100, 1);
     add_filter('page_css_class',     'jp_filter', 100, 1);
@@ -112,14 +117,21 @@
         echo '</ul>';
     }
 
-    //add_filter('show_admin_bar', 'jp_toolbar');
+    add_filter('wp_title', 'jp_title');
+    function jp_title($title) {
+        if (empty($title) && (is_home() || is_front_page()))
+            $title = get_bloginfo('name');
+        return $title;
+    }
+
+    add_filter('show_admin_bar', 'jp_toolbar');
     function jp_toolbar() {
-        return false;
+        return true;
     }
 
     //add_filter('excerpt_more', 'jp_view');
     function jp_view($more) {
         global $post;
-        return '<a href="'.get_permalink($post->ID).'">'.__('View article', 'html5blank').'...</a>';
+        return '<a href="'.get_permalink($post->ID).'">'.__('View article', 'jp').'...</a>';
     }
 ?>

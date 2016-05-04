@@ -7,6 +7,8 @@
     require_once('includes/setup.php');
     require_once('includes/utilities.php');
 
+    if(!isset($content_width))
+        $content_width = 1200;
     if(function_exists('add_theme_support')) {
         load_theme_textdomain('jp', get_template_directory().'/languages');
         add_theme_support('menus');

@@ -65,4 +65,5 @@ gulp.task("watch", function () {
 
     gulp.watch("scripts/**", ["scripts-lint", "scripts"]);
     gulp.watch("stylesheets/**", ["stylesheets-lint", "stylesheets"]);
+    gulp.watch(["*", "content/**", "images/**", "includes/**"]).on("change", sync.reload);
 });
